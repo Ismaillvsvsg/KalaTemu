@@ -23,13 +23,22 @@ let roomData = null;
 let isDragging = false;
 let isSelecting = true;
 let unsubscribeHeatmap = null;
-let rawResponses = []; // Simpan data asli untuk modal
+let rawResponses = []; 
+
+// CEK URL UNTUK AUTO-FILL KODE AGENDA
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const codeFromUrl = urlParams.get('code');
+    if (codeFromUrl) {
+        document.getElementById('join-code').value = codeFromUrl.toUpperCase();
+        showView('view-join');
+    }
+});
 
 window.showView = (viewId) => {
     document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
     document.getElementById(viewId).classList.remove('hidden');
 
-    // Sembunyikan Header Utama saat di Workspace
     const mainHeader = document.getElementById('main-header');
     if (mainHeader) {
         if (viewId === 'view-fill') mainHeader.classList.add('hidden');
@@ -103,6 +112,8 @@ document.getElementById('form-join').addEventListener('submit', async (e) => {
             roomData = roomSnap.data();
             
             document.getElementById('btn-back-host')?.classList.add('hidden'); 
+            // Membersihkan URL jika mereka gabung via link
+            window.history.replaceState({}, document.title, window.location.pathname);
             initWorkspace();
         } else {
             alert("Kode agenda tidak valid!");
@@ -112,10 +123,11 @@ document.getElementById('form-join').addEventListener('submit', async (e) => {
     }
 });
 
-// SHARE WHATSAPP
+// FITUR SHARE WHATSAPP DENGAN AUTO-FILL LINK
 document.getElementById('btn-share-wa').addEventListener('click', () => {
-    const url = window.location.origin; // Mengambil link vercel otomatis
-    const text = `Halo! Yuk isi ketersediaan waktu untuk agenda *${roomData.title}*.\n\n🌐 Link: ${url}\n🔑 Kode: *${currentRoomCode}*\n\nBantu isi secepatnya ya di KalaTemu agar jadwal cepat fix!`;
+    // Membuat URL yang langsung menuju pengisian kode
+    const url = window.location.origin + window.location.pathname + "?code=" + currentRoomCode;
+    const text = `Halo! Yuk isi ketersediaan waktu untuk agenda *${roomData.title}*.\n\n🌐 Buka Link Ini: ${url}\n🔑 Kode: *${currentRoomCode}*\n\nBantu isi secepatnya ya di KalaTemu agar jadwal cepat fix!`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
 });
 
@@ -129,6 +141,9 @@ function initWorkspace() {
     renderGrid('heatmap-grid', roomData, false);
     showView('view-fill');
 
+    // Memicu setup slider
+    setTimeout(setupScrollSlider, 150);
+
     if (unsubscribeHeatmap) unsubscribeHeatmap();
     const responsesRef = collection(db, "rooms", currentRoomCode, "responses");
     unsubscribeHeatmap = onSnapshot(responsesRef, (snapshot) => {
@@ -136,7 +151,7 @@ function initWorkspace() {
         snapshot.forEach(doc => rawResponses.push(doc.data()));
         document.getElementById('total-participants-badge').innerText = rawResponses.length;
         calculateHeatmap(rawResponses);
-        generateModalContent(); // Update isi pop-up
+        generateModalContent(); 
     });
 }
 
@@ -172,11 +187,29 @@ function renderGrid(containerId, data, isInteractive = false) {
     table.innerHTML = thead + `</tbody>`;
 }
 
+// LOGIKA SLIDER HORIZONTAL UNTUK HP
+const scheduleWrapper = document.getElementById('schedule-wrapper');
+const scrollSlider = document.getElementById('scroll-slider');
+
+function setupScrollSlider() {
+    if (!scheduleWrapper || !scrollSlider) return;
+    const maxScroll = scheduleWrapper.scrollWidth - scheduleWrapper.clientWidth;
+    if (maxScroll > 0) {
+        scrollSlider.max = maxScroll;
+        scrollSlider.value = scheduleWrapper.scrollLeft;
+        scrollSlider.classList.remove('hidden');
+    } else {
+        scrollSlider.classList.add('hidden');
+    }
+}
+scrollSlider.addEventListener('input', (e) => {
+    scheduleWrapper.scrollLeft = e.target.value;
+});
+
 // LOGIKA INTERAKTIF (Mouse & Touch Screen)
 const scheduleTable = document.getElementById('schedule-grid');
 let lastTouchedCell = null;
 
-// Untuk Mouse di Laptop
 scheduleTable.addEventListener('mousedown', (e) => {
     if (e.target.classList.contains('time-slot')) {
         isDragging = true;
@@ -189,10 +222,9 @@ scheduleTable.addEventListener('mouseover', (e) => {
 });
 document.addEventListener('mouseup', () => { isDragging = false; });
 
-// Untuk Layar Sentuh (HP)
 scheduleTable.addEventListener('touchstart', (e) => {
     if (e.target.classList.contains('time-slot')) {
-        e.preventDefault(); // Mencegah layar scroll saat ditekan
+        e.preventDefault(); 
         isDragging = true;
         isSelecting = !e.target.classList.contains('bg-blue-600');
         toggleCell(e.target);
@@ -390,7 +422,6 @@ function generateModalContent() {
         
         if (res.slots && res.slots.length > 0) {
             const grouped = {};
-            // Mengelompokkan berdasarkan tanggal
             res.slots.forEach(slotStr => {
                 const [date, time] = slotStr.split('|');
                 if (!grouped[date]) grouped[date] = [];
@@ -399,7 +430,6 @@ function generateModalContent() {
             
             const detailStr = Object.keys(grouped).map(date => {
                 const d = formatDateDisplay(date);
-                // Mengurutkan jam dari pagi ke malam
                 const times = grouped[date].sort().join(', ');
                 return `<li class="text-[11px] text-gray-600"><strong class="text-gray-800">${d.dayName}, ${d.dateMonth}:</strong> ${times}</li>`;
             }).join('');
