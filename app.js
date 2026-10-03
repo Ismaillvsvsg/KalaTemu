@@ -25,7 +25,6 @@ let isSelecting = true;
 let unsubscribeHeatmap = null;
 let rawResponses = []; 
 
-// CEK URL UNTUK AUTO-FILL KODE AGENDA
 window.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const codeFromUrl = urlParams.get('code');
@@ -68,7 +67,6 @@ function formatDateDisplay(dateString) {
     return { dayName: days[date.getDay()], dateMonth: `${date.getDate()} ${months[date.getMonth()]}` };
 }
 
-// HOST: Buat Rapat
 document.getElementById('form-create').addEventListener('submit', async (e) => {
     e.preventDefault();
     const hostName = document.getElementById('host-name').value.trim();
@@ -97,7 +95,6 @@ document.getElementById('form-create').addEventListener('submit', async (e) => {
     }
 });
 
-// MEMBER: Gabung Rapat
 document.getElementById('form-join').addEventListener('submit', async (e) => {
     e.preventDefault();
     const code = document.getElementById('join-code').value.trim().toUpperCase();
@@ -112,7 +109,6 @@ document.getElementById('form-join').addEventListener('submit', async (e) => {
             roomData = roomSnap.data();
             
             document.getElementById('btn-back-host')?.classList.add('hidden'); 
-            // Membersihkan URL jika mereka gabung via link
             window.history.replaceState({}, document.title, window.location.pathname);
             initWorkspace();
         } else {
@@ -123,15 +119,12 @@ document.getElementById('form-join').addEventListener('submit', async (e) => {
     }
 });
 
-// FITUR SHARE WHATSAPP DENGAN AUTO-FILL LINK
 document.getElementById('btn-share-wa').addEventListener('click', () => {
-    // Membuat URL yang langsung menuju pengisian kode
     const url = window.location.origin + window.location.pathname + "?code=" + currentRoomCode;
     const text = `Halo! Yuk isi ketersediaan waktu untuk agenda *${roomData.title}*.\n\n🌐 Buka Link Ini: ${url}\n🔑 Kode: *${currentRoomCode}*\n\nBantu isi secepatnya ya di KalaTemu agar jadwal cepat fix!`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
 });
 
-// INISIALISASI WORKSPACE
 function initWorkspace() {
     document.getElementById('fill-agenda-name').innerText = roomData.title;
     document.getElementById('fill-title').innerText = `Hai ${currentUserName}, Tandai Waktu Kosongmu`;
@@ -141,7 +134,6 @@ function initWorkspace() {
     renderGrid('heatmap-grid', roomData, false);
     showView('view-fill');
 
-    // Memicu setup slider
     setTimeout(setupScrollSlider, 150);
 
     if (unsubscribeHeatmap) unsubscribeHeatmap();
@@ -187,8 +179,8 @@ function renderGrid(containerId, data, isInteractive = false) {
     table.innerHTML = thead + `</tbody>`;
 }
 
-// LOGIKA SLIDER HORIZONTAL UNTUK HP
 const scheduleWrapper = document.getElementById('schedule-wrapper');
+const heatmapWrapper = document.getElementById('heatmap-wrapper');
 const scrollSlider = document.getElementById('scroll-slider');
 
 function setupScrollSlider() {
@@ -202,11 +194,13 @@ function setupScrollSlider() {
         scrollSlider.classList.add('hidden');
     }
 }
+
+// Sinkronisasi slider dengan tabel
 scrollSlider.addEventListener('input', (e) => {
     scheduleWrapper.scrollLeft = e.target.value;
+    if(heatmapWrapper) heatmapWrapper.scrollLeft = e.target.value;
 });
 
-// LOGIKA INTERAKTIF (Mouse & Touch Screen)
 const scheduleTable = document.getElementById('schedule-grid');
 let lastTouchedCell = null;
 
@@ -265,7 +259,6 @@ document.getElementById('btn-clear-schedule').addEventListener('click', () => {
     });
 });
 
-// SIMPAN KETERSEDIAAN
 document.getElementById('btn-save-schedule').addEventListener('click', async () => {
     const selectedCells = document.querySelectorAll('.time-slot.bg-blue-600');
     const availableSlots = Array.from(selectedCells).map(cell => cell.getAttribute('data-slot'));
@@ -297,7 +290,6 @@ document.getElementById('btn-back-host').addEventListener('click', () => {
     showView('view-create');
 });
 
-// LOGIKA HEATMAP GRUP 
 function calculateHeatmap(responses) {
     const totalMembers = responses.length;
     const slotCounts = {};
@@ -387,7 +379,6 @@ function calculateHeatmap(responses) {
     });
 }
 
-// LOGIKA MODAL (POP UP) DAFTAR PENGISI
 const modal = document.getElementById('modal-participants');
 const btnOpenModal = document.getElementById('btn-open-modal');
 const btnCloseModal = document.getElementById('btn-close-modal');
