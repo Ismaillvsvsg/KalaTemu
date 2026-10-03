@@ -5,12 +5,12 @@ import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from "https
 // PASTE FIREBASE CONFIG MILIKMU DI SINI
 // ==========================================
 const firebaseConfig = {
-    apiKey: "AIzaSy...",
-    authDomain: "kalatemuu.firebaseapp.com",
-    projectId: "kalatemuu",
-    storageBucket: "kalatemuu.firebasestorage.app",
-    messagingSenderId: "1234567890",
-    appId: "1:1234567890:web:abcdef"
+    apiKey: "AIzaSyCeDjXXoMFx9cVOScrNwvEhxy0a38-xE_s",
+  authDomain: "kalatemuu.firebaseapp.com",
+  projectId: "kalatemuu",
+  storageBucket: "kalatemuu.firebasestorage.app",
+  messagingSenderId: "382961472785",
+  appId: "1:382961472785:web:da9dc00021e748dfde68b0"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -35,7 +35,6 @@ function getDatesInRange(startDate, endDate) {
     const end = new Date(endDate);
     current.setHours(0,0,0,0);
     end.setHours(0,0,0,0);
-
     while (current <= end) {
         const yyyy = current.getFullYear();
         const mm = String(current.getMonth() + 1).padStart(2, '0');
@@ -50,10 +49,7 @@ function formatDateDisplay(dateString) {
     const date = new Date(dateString);
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-    return {
-        dayName: days[date.getDay()],
-        dateMonth: `${date.getDate()} ${months[date.getMonth()]}`
-    };
+    return { dayName: days[date.getDay()], dateMonth: `${date.getDate()} ${months[date.getMonth()]}` };
 }
 
 // HOST: Buat Rapat
@@ -66,14 +62,9 @@ document.getElementById('form-create').addEventListener('submit', async (e) => {
     const startHour = parseInt(document.getElementById('start-hour').value);
     const endHour = parseInt(document.getElementById('end-hour').value);
     
-    if (new Date(startStr) > new Date(endStr)) {
-        return alert("Tanggal mulai tidak boleh melewati tanggal selesai!");
-    }
-
+    if (new Date(startStr) > new Date(endStr)) return alert("Tanggal mulai tidak boleh melewati tanggal selesai!");
     const selectedDays = getDatesInRange(startStr, endStr);
-    if (selectedDays.length > 14) {
-        return alert("Maksimal rentang waktu adalah 14 hari agar tabel tetap nyaman dilihat.");
-    }
+    if (selectedDays.length > 14) return alert("Maksimal rentang waktu adalah 14 hari.");
 
     currentRoomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     currentUserName = hostName;
@@ -82,16 +73,11 @@ document.getElementById('form-create').addEventListener('submit', async (e) => {
 
     try {
         await setDoc(doc(db, "rooms", currentRoomCode), roomData);
-        document.getElementById('fill-title').innerText = `Hai ${currentUserName}, Tandai Waktu Kosongmu`;
-        
-        document.getElementById('btn-cancel-edit')?.classList.add('hidden');
         document.getElementById('btn-back-host')?.classList.remove('hidden'); 
-        
-        renderGrid('schedule-grid', roomData, true);
-        showView('view-fill');
+        initWorkspace();
     } catch (error) {
         console.error("Error: ", error);
-        alert("Gagal membuat agenda. Coba periksa koneksi internet Anda.");
+        alert("Gagal membuat agenda.");
     }
 });
 
@@ -109,13 +95,8 @@ document.getElementById('form-join').addEventListener('submit', async (e) => {
             currentUserSavedSlots = [];
             roomData = roomSnap.data();
             
-            document.getElementById('fill-title').innerText = `Hai ${name}, Tandai Waktu Kosongmu`;
-            
-            document.getElementById('btn-cancel-edit')?.classList.add('hidden');
             document.getElementById('btn-back-host')?.classList.add('hidden'); 
-            
-            renderGrid('schedule-grid', roomData, true);
-            showView('view-fill');
+            initWorkspace();
         } else {
             alert("Kode agenda tidak valid!");
         }
@@ -124,42 +105,62 @@ document.getElementById('form-join').addEventListener('submit', async (e) => {
     }
 });
 
-// GENERATE GRID KALENDER (TEMA BLUE & PROFESSIONAL)
+// INISIALISASI WORKSPACE TERPADU
+function initWorkspace() {
+    // 1. Set Header Teks
+    document.getElementById('fill-agenda-name').innerText = roomData.title;
+    document.getElementById('fill-title').innerText = `Hai ${currentUserName}, Tandai Waktu Kosongmu`;
+    document.getElementById('workspace-code').innerText = currentRoomCode;
+
+    // 2. Render Tabel Kiri & Kanan
+    renderGrid('schedule-grid', roomData, true);
+    renderGrid('heatmap-grid', roomData, false);
+    showView('view-fill');
+
+    // 3. Tarik Data Grup Real-time
+    if (unsubscribeHeatmap) unsubscribeHeatmap();
+    const responsesRef = collection(db, "rooms", currentRoomCode, "responses");
+    unsubscribeHeatmap = onSnapshot(responsesRef, (snapshot) => {
+        const responses = [];
+        snapshot.forEach(doc => responses.push(doc.data()));
+        document.getElementById('total-participants').innerText = responses.length;
+        calculateHeatmap(responses);
+    });
+}
+
 function renderGrid(containerId, data, isInteractive = false) {
     const table = document.getElementById(containerId);
     table.innerHTML = '';
-
-    let thead = `<thead><tr><th class="p-3 border border-gray-200 bg-gray-50 text-gray-700 font-bold rounded-tl-lg text-sm w-20">Jam</th>`;
+    let thead = `<thead><tr><th class="p-2 border border-gray-200 bg-gray-50 text-gray-700 font-bold rounded-tl-lg text-[10px] md:text-xs w-12 md:w-16">Jam</th>`;
+    
     data.days.forEach((dateStr, index) => {
         let roundedClass = (index === data.days.length - 1) ? 'rounded-tr-lg' : '';
         const dateObj = formatDateDisplay(dateStr);
-        thead += `<th class="p-2 border border-gray-200 bg-gray-50 text-gray-700 text-sm min-w-[100px] ${roundedClass} leading-tight">
+        thead += `<th class="p-1.5 md:p-2 border border-gray-200 bg-gray-50 text-gray-700 text-xs min-w-[70px] md:min-w-[90px] ${roundedClass} leading-tight">
             <span class="font-bold">${dateObj.dayName}</span><br>
-            <span class="text-[10px] font-semibold text-gray-500">${dateObj.dateMonth}</span>
+            <span class="text-[9px] md:text-[10px] font-semibold text-gray-500">${dateObj.dateMonth}</span>
         </th>`;
     });
-    thead += `</tr></thead>`;
-    table.innerHTML = thead;
-
-    let tbody = `<tbody>`;
+    thead += `</tr></thead><tbody>`;
+    
     for (let h = data.startHour; h < data.endHour; h++) {
         let timeLabel = `${h.toString().padStart(2, '0')}:00`;
-        tbody += `<tr><td class="p-2 border border-gray-200 text-xs font-semibold text-gray-500 bg-white align-middle">${timeLabel}</td>`;
+        thead += `<tr><td class="p-1 md:p-2 border border-gray-200 text-[10px] md:text-xs font-semibold text-gray-500 bg-white align-middle">${timeLabel}</td>`;
         
         data.days.forEach(dateStr => {
             const slotId = `${dateStr}|${timeLabel}`;
             if (isInteractive) {
-                tbody += `<td class="time-slot p-2 border border-gray-200 bg-white" data-slot="${slotId}"></td>`;
+                thead += `<td class="time-slot p-2 border border-gray-200 bg-white" data-slot="${slotId}"></td>`;
             } else {
-                tbody += `<td class="heatmap-cell p-2 border border-gray-200 bg-white" data-slot="${slotId}"></td>`;
+                thead += `<td class="heatmap-cell p-2 border border-gray-200 bg-white" data-slot="${slotId}"></td>`;
             }
         });
-        tbody += `</tr>`;
+        thead += `</tr>`;
     }
-    tbody += `</tbody>`;
-    table.innerHTML += tbody;
+    table.innerHTML = thead + `</tbody>`;
 }
 
+// LOGIKA INTERAKTIF (Hanya untuk tabel kiri)
 const scheduleTable = document.getElementById('schedule-grid');
 scheduleTable.addEventListener('mousedown', (e) => {
     if (e.target.classList.contains('time-slot')) {
@@ -169,9 +170,7 @@ scheduleTable.addEventListener('mousedown', (e) => {
     }
 });
 scheduleTable.addEventListener('mouseover', (e) => {
-    if (isDragging && e.target.classList.contains('time-slot')) {
-        toggleCell(e.target);
-    }
+    if (isDragging && e.target.classList.contains('time-slot')) toggleCell(e.target);
 });
 document.addEventListener('mouseup', () => { isDragging = false; });
 
@@ -192,6 +191,7 @@ document.getElementById('btn-clear-schedule').addEventListener('click', () => {
     });
 });
 
+// SIMPAN DENGAN EFEK TOMBOL HIJAU
 document.getElementById('btn-save-schedule').addEventListener('click', async () => {
     const selectedCells = document.querySelectorAll('.time-slot.bg-blue-600');
     const availableSlots = Array.from(selectedCells).map(cell => cell.getAttribute('data-slot'));
@@ -200,51 +200,30 @@ document.getElementById('btn-save-schedule').addEventListener('click', async () 
     try {
         const responseRef = doc(db, "rooms", currentRoomCode, "responses", currentUserName);
         await setDoc(responseRef, { name: currentUserName, slots: availableSlots, updatedAt: new Date() });
-        initDashboard();
+        
+        const btn = document.getElementById('btn-save-schedule');
+        const originalText = btn.innerText;
+        btn.innerText = "Tersimpan! ✅";
+        btn.classList.replace('bg-blue-600', 'bg-green-600');
+        btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.replace('bg-green-600', 'bg-blue-600');
+            btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+        }, 2500);
+
     } catch (error) {
         console.error("Error saving schedule: ", error);
         alert("Gagal menyimpan ketersediaan jadwal.");
     }
 });
 
-document.getElementById('btn-edit-schedule')?.addEventListener('click', () => {
-    document.getElementById('fill-title').innerText = `Edit Jadwalmu, ${currentUserName}`;
-    
-    document.getElementById('btn-cancel-edit')?.classList.remove('hidden');
-    document.getElementById('btn-back-host')?.classList.add('hidden'); 
-    
-    renderGrid('schedule-grid', roomData, true); 
-    currentUserSavedSlots.forEach(slot => {
-        const cell = document.querySelector(`.time-slot[data-slot="${slot}"]`);
-        if (cell) {
-            cell.classList.remove('bg-white');
-            cell.classList.add('bg-blue-600', 'shadow-inner');
-        }
-    });
-    
-    showView('view-fill');
-});
-
-function initDashboard() {
-    document.getElementById('dash-title').innerText = roomData.title;
-    document.getElementById('dash-code').innerText = currentRoomCode;
-    renderGrid('heatmap-grid', roomData, false);
-    showView('view-dashboard');
-
-    if (unsubscribeHeatmap) unsubscribeHeatmap();
-    const responsesRef = collection(db, "rooms", currentRoomCode, "responses");
-    unsubscribeHeatmap = onSnapshot(responsesRef, (snapshot) => {
-        const responses = [];
-        snapshot.forEach(doc => responses.push(doc.data()));
-        document.getElementById('total-participants').innerText = responses.length;
-        calculateHeatmap(responses);
-    });
-}
-
 document.getElementById('btn-back-host').addEventListener('click', () => {
     showView('view-create');
 });
 
+// LOGIKA HEATMAP GRUP (Tabel Kanan)
 function calculateHeatmap(responses) {
     const totalMembers = responses.length;
     const slotCounts = {};
@@ -253,7 +232,19 @@ function calculateHeatmap(responses) {
 
     responses.forEach(res => {
         participantNames.push(res.name);
-        if(res.name === currentUserName) currentUserSavedSlots = res.slots;
+        
+        // Memastikan isian pengguna mewarnai tabel interaktif (kiri) saat mereka baru gabung ulang
+        if(res.name === currentUserName) {
+            currentUserSavedSlots = res.slots;
+            currentUserSavedSlots.forEach(slot => {
+                const cell = document.querySelector(`.time-slot[data-slot="${slot}"]`);
+                if (cell) {
+                    cell.classList.remove('bg-white');
+                    cell.classList.add('bg-blue-600', 'shadow-inner');
+                }
+            });
+        }
+
         res.slots.forEach(slot => {
             slotCounts[slot] = (slotCounts[slot] || 0) + 1;
             if (!slotNames[slot]) slotNames[slot] = [];
@@ -263,25 +254,21 @@ function calculateHeatmap(responses) {
 
     const listContainer = document.getElementById('participant-list');
     if (participantNames.length > 0) {
-        listContainer.innerHTML = participantNames.map(n => `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-semibold border border-gray-200">${n}</span>`).join('');
+        listContainer.innerHTML = participantNames.map(n => `<span class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-[11px] md:text-xs font-semibold border border-gray-200">${n}</span>`).join('');
     } else {
-        listContainer.innerHTML = '<span class="text-sm text-gray-400 italic">Belum ada...</span>';
+        listContainer.innerHTML = '<span class="text-xs text-gray-400 italic">Belum ada...</span>';
     }
 
     document.querySelectorAll('.heatmap-cell').forEach(cell => {
         const slot = cell.getAttribute('data-slot');
         const count = slotCounts[slot] || 0;
-        
-        cell.className = 'heatmap-cell relative group p-2 border border-gray-200 text-xs font-bold transition-colors duration-300';
+        cell.className = 'heatmap-cell relative group p-1 md:p-2 border border-gray-200 text-[10px] md:text-xs font-bold transition-colors duration-300';
         
         if (count > 0 && totalMembers > 0) {
             const ratio = count / totalMembers;
             const alpha = Math.max(0.15, ratio);
-            
-            // Konversi warna ke variasi Biru Google (rgba 37, 99, 235)
             cell.style.backgroundColor = `rgba(37, 99, 235, ${alpha})`;
             cell.style.color = ratio > 0.6 ? 'white' : '#1e3a8a'; 
-            
             const namesList = slotNames[slot].join(', ');
             
             cell.innerHTML = `
@@ -298,46 +285,40 @@ function calculateHeatmap(responses) {
         }
     });
 
-    const sortedSlots = Object.entries(slotCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3);
-
+    const sortedSlots = Object.entries(slotCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
     const recomContainer = document.getElementById('top-recommendations');
     recomContainer.innerHTML = '';
     
     if (sortedSlots.length === 0) {
-        recomContainer.innerHTML = '<li class="text-sm text-gray-400 italic bg-white p-4 rounded-lg border border-gray-200">Menunggu irisan jadwal peserta...</li>';
+        recomContainer.innerHTML = '<li class="text-xs md:text-sm text-gray-400 italic bg-white p-3 md:p-4 rounded-lg border border-gray-200">Menunggu irisan jadwal peserta...</li>';
         return;
     }
 
     sortedSlots.forEach((item, index) => {
         const [slotString, count] = item;
         const percentage = Math.round((count / totalMembers) * 100);
-        
         const [dateStr, time] = slotString.split('|');
         const dateObj = formatDateDisplay(dateStr);
         const names = slotNames[slotString].join(', ');
         
         recomContainer.innerHTML += `
-            <li class="relative group flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-sm transition-transform hover:-translate-y-0.5 gap-2 w-full overflow-visible cursor-help">
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-[200px] bg-gray-800 text-white text-[11px] font-normal rounded py-2 px-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg pointer-events-none text-center leading-relaxed">
+            <li class="relative group flex items-center justify-between bg-white p-2 md:p-3 rounded-lg border border-gray-200 shadow-sm transition-transform hover:-translate-y-0.5 gap-2 w-full overflow-visible cursor-help">
+                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-[200px] bg-gray-800 text-white text-[10px] md:text-[11px] font-normal rounded py-2 px-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg pointer-events-none text-center leading-relaxed">
                     <span class="text-blue-300 font-bold block mb-0.5">Daftar Hadir:</span>
                     ${names}
                     <svg class="absolute text-gray-800 h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon class="fill-current" points="0,0 127.5,127.5 255,0"/></svg>
                 </div>
-
-                <div class="flex items-center gap-3 min-w-0">
-                    <span class="font-bold text-gray-300 text-lg w-5 shrink-0">${index + 1}.</span>
+                <div class="flex items-center gap-2 md:gap-3 min-w-0">
+                    <span class="font-bold text-gray-300 text-base md:text-lg w-5 shrink-0">${index + 1}.</span>
                     <div class="min-w-0">
-                        <p class="font-bold text-gray-800 text-sm whitespace-nowrap">${dateObj.dayName}, <span class="text-blue-600">${time}</span></p>
-                        <p class="text-[10px] text-gray-500 font-semibold mb-0.5">${dateObj.dateMonth}</p>
-                        <p class="text-[11px] text-gray-400 truncate">${names}</p>
+                        <p class="font-bold text-gray-800 text-xs md:text-sm whitespace-nowrap">${dateObj.dayName}, <span class="text-blue-600">${time}</span></p>
+                        <p class="text-[9px] md:text-[10px] text-gray-500 font-semibold mb-0.5">${dateObj.dateMonth}</p>
+                        <p class="text-[10px] md:text-[11px] text-gray-400 truncate">${names}</p>
                     </div>
                 </div>
-
                 <div class="text-right flex flex-col items-end shrink-0 pl-2">
-                    <p class="font-bold text-blue-600 text-base leading-tight">${count}<span class="text-[10px] font-normal text-gray-500"> / ${totalMembers}</span></p>
-                    <p class="text-[9px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded mt-1 whitespace-nowrap">${percentage}%</p>
+                    <p class="font-bold text-blue-600 text-sm md:text-base leading-tight">${count}<span class="text-[9px] md:text-[10px] font-normal text-gray-500"> / ${totalMembers}</span></p>
+                    <p class="text-[8px] md:text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 md:px-2 py-0.5 rounded mt-1 whitespace-nowrap">${percentage}%</p>
                 </div>
             </li>
         `;
