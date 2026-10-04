@@ -78,10 +78,15 @@ document.getElementById('form-create').addEventListener('submit', async (e) => {
     const title = document.getElementById('agenda-name').value;
     const startStr = document.getElementById('start-date').value;
     const endStr = document.getElementById('end-date').value;
-    const startHour = parseInt(document.getElementById('start-hour').value);
-    const endHour = parseInt(document.getElementById('end-hour').value);
+    
+    // PERBAIKAN: Mengambil angka jam dari input tipe "time" ("09:00" -> 9)
+    const rawStartHour = document.getElementById('start-hour').value;
+    const rawEndHour = document.getElementById('end-hour').value;
+    const startHour = parseInt(rawStartHour.split(':')[0]);
+    const endHour = parseInt(rawEndHour.split(':')[0]);
     
     if (new Date(startStr) > new Date(endStr)) return alert("Tanggal mulai tidak boleh melewati tanggal selesai!");
+    if (startHour >= endHour) return alert("Jam mulai harus lebih awal dari jam selesai!");
     const selectedDays = getDatesInRange(startStr, endStr);
     if (selectedDays.length > 14) return alert("Maksimal rentang waktu adalah 14 hari.");
 
@@ -96,7 +101,7 @@ document.getElementById('form-create').addEventListener('submit', async (e) => {
         initWorkspace();
     } catch (error) {
         console.error("Error: ", error);
-        alert("Gagal membuat agenda.");
+        alert("Gagal membuat Acara.");
     }
 });
 
