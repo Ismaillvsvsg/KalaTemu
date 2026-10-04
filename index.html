@@ -173,17 +173,20 @@
 
     <!-- MODAL WELCOME MESSAGE -->
         <div id="modal-welcome" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm p-4">
-            <div class="bg-white rounded-2xl w-full max-w-lg p-6 md:p-8 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col">
-                <h3 class="text-xl md:text-2xl font-extrabold text-gray-800 mb-4">Selamat datang di KalaTemu.</h3>
+            <!-- Menambahkan aksen garis biru di bagian atas kotak (border-t-8) -->
+            <div class="bg-white rounded-2xl w-full max-w-lg p-6 md:p-8 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col border-t-8 border-blue-600">
                 
-                <div class="text-gray-600 space-y-4 text-sm md:text-base leading-relaxed mb-8">
-                    <p>Hai semuanya! KalaTemu merupakan aplikasi untuk menentukan jadwal bersama.</p>
+                <h3 class="text-xl md:text-2xl font-extrabold text-blue-700 mb-4">Selamat datang di KalaTemu!</h3>
+                
+                <div class="text-gray-700 space-y-4 text-sm md:text-base leading-relaxed mb-8">
+                     <p>Hai semuanya! KalaTemu merupakan aplikasi untuk menentukan jadwal bersama.</p>
                     <p>Aplikasi ini aku buat karena gabut tapi juga kepikiran kalo buat jadwal temu seperti rapat organisasi, kerkom, main sama temen, dll itu agak susah ga si. Terutama ditengah hiruk pikuk dewasa ini haha..</p>
                     <p>Silakan pakai aplikasi ini dan explore semuanya. <strong class="text-gray-800">Please enjoy!</strong> Maybe nanti bakal ada update kalo aku mut, babay..</p>
                 </div>
                 
                 <div class="flex justify-end">
-                    <button id="btn-close-welcome" class="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-xl transition-colors shadow-sm text-sm">Mengerti</button>
+                    <!-- Tombol diubah menjadi biru solid -->
+                    <button id="btn-close-welcome" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-md text-sm">Okai</button>
                 </div>
             </div>
         </div>
