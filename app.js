@@ -25,7 +25,12 @@ let isSelecting = true;
 let unsubscribeHeatmap = null;
 let rawResponses = []; 
 
+// CEK URL UNTUK AUTO-FILL KODE AGENDA & TAMPILKAN WELCOME POP-UP
 window.addEventListener('DOMContentLoaded', () => {
+    
+    // Panggil Pop-up Sambutan
+    showWelcomeModal();
+
     const urlParams = new URLSearchParams(window.location.search);
     const codeFromUrl = urlParams.get('code');
     if (codeFromUrl) {
@@ -439,4 +444,33 @@ function generateModalContent() {
         `;
     });
     container.innerHTML = html;
+}
+
+// ==========================================
+// LOGIKA MODAL WELCOME (SAMBUTAN AWAL)
+// ==========================================
+const welcomeModal = document.getElementById('modal-welcome');
+const btnCloseWelcome = document.getElementById('btn-close-welcome');
+
+function showWelcomeModal() {
+    // Cek apakah user sudah pernah menutup pop up ini sebelumnya
+    if (!localStorage.getItem('kalatemu_welcome_shown')) {
+        welcomeModal.classList.remove('hidden');
+        setTimeout(() => {
+            welcomeModal.classList.remove('opacity-0');
+            welcomeModal.firstElementChild.classList.remove('scale-95');
+        }, 10);
+    }
+}
+
+function hideWelcomeModal() {
+    welcomeModal.classList.add('opacity-0');
+    welcomeModal.firstElementChild.classList.add('scale-95');
+    // Simpan data di browser agar tidak muncul lagi besok-besok
+    localStorage.setItem('kalatemu_welcome_shown', 'true');
+    setTimeout(() => welcomeModal.classList.add('hidden'), 300);
+}
+
+if (btnCloseWelcome) {
+    btnCloseWelcome.addEventListener('click', hideWelcomeModal);
 }
